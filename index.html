@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DashTescam HUD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.2.4/dist/protobuf.min.js"></script>
+    <script src="dashcam-mp4.js"></script>
+    <style>
+        body { background: #000; color: #fff; font-family: 'Inter', sans-serif; overflow: hidden; }
+        .hud-overlay { background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%); }
+        .indicator-green { color: #4ade80; }
+        .autopilot-blue { color: #1d9bf0; }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <div id="upload-screen" class="flex-grow flex flex-col items-center justify-center p-6 text-center">
+        <div class="mb-6 text-6xl">🏎️</div>
+        <h1 class="text-3xl font-bold mb-2 uppercase italic tracking-tighter">Dash<span class="text-red-600">Tescam</span></h1>
+        <p class="text-gray-500 mb-8">Kies een Tesla clip om de HUD te activeren</p>
+        <button onclick="document.getElementById('fileIn').click()" class="bg-white text-black px-8 py-4 rounded-full font-bold active:scale-95 transition-transform">
+            SELECTEER VIDEO
+        </button>
+        <input type="file" id="fileIn" class="hidden" accept="video/mp4">
+        <p id="status" class="mt-4 text-xs text-gray-600 font-mono"></p>
+    </div>
+
+    <div id="player-screen" class="hidden relative h-screen w-screen bg-black">
+        <video id="mainVideo" muted playsinline class="h-full w-full object-contain"></video>
+        
+        <div class="hud-overlay absolute bottom-0 left-0 w-full p-8 flex flex-col items-center">
+            
+            <div class="flex items-center justify-between w-full max-w-xl mb-2">
+                <div class="flex items-center space-gap-4">
+                    <span id="gear" class="text-2xl font-bold text-gray-500 mr-4">P</span>
+                    <span id="leftTurn" class="text-3xl opacity-20 transition-opacity">⬅️</span>
+                </div>
+
+                <div class="text-center">
+                    <div id="speedVal" class="text-5xl font-bold tracking-tighter">0</div>
+                    <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">KM/U</div>
+                </div>
+
+                <div class="flex items-center">
+                    <span id="rightTurn" class="text-3xl opacity-20 transition-opacity mr-4">➡️</span>
+                    <div id="apIcon" class="w-8 h-8 rounded-full border-2 border-gray-600 flex items-center justify-center">
+                        <span class="text-[10px] font-bold text-gray-600">AP</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileIn = document.getElementById('fileIn');
+        const video = document.getElementById('mainVideo');
+        const status = document.getElementById('status');
+        let telemetry = [];
+
+        async function processVideo(file) {
+            status.innerText = "Data wordt gedecodeerd...";
+            const buffer = await file.arrayBuffer();
+            try {
+                const { SeiMetadata } = await DashcamHelpers.initProtobuf('dashcam.proto');
+                const parser = new DashcamMP4(buffer);
+                telemetry = parser.extractSeiMessages(SeiMetadata);
+                
+                if (telemetry.length > 0) {
+                    showPlayer(file);
+                } else {
+                    alert("Geen Tesla metadata gevonden in deze video.");
+                }
+            } catch (e) {
+                status.innerText = "Fout: dashcam.proto ontbreekt in je GitHub.";
+                console.error(e);
+            }
+        }
+
+        function showPlayer(file) {
+            video.src = URL.createObjectURL(file);
+            document.getElementById('upload-screen').classList.add('hidden');
+            document.getElementById('player-screen').classList.remove('hidden');
+            video.play();
+        }
+
+        video.ontimeupdate = () => {
+            const time = video.currentTime;
+            // Zoek het juiste moment in de data
+            const data = telemetry.find(m => m.timestamp >= time) || telemetry[0];
+            
+            if (data) {
+                // Update Snelheid
+                document.getElementById('speedVal').innerText = Math.round(data.speedMps * 3.6);
+                
+                // Update Versnelling (Gear)
+                const gears = ["P", "R", "N", "D"];
+                document.getElementById('gear').innerText = gears[data.gear] || "D";
+                document.getElementById('gear').classList.toggle('text-white', data.gear > 0);
+
+                // Update Knipperlichten
+                document.getElementById('leftTurn').style.opacity = data.isLeftTurnSignalOn ? "1" : "0.2";
+                document.getElementById('rightTurn').style.opacity = data.isRightTurnSignalOn ? "1" : "0.2";
+
+                // Update Autopilot Kleur
+                const apIcon = document.getElementById('apIcon');
+                if (data.autopilotState > 1) {
+                    apIcon.style.borderColor = "#1d9bf0";
+                    apIcon.querySelector('span').style.color = "#1d9bf0";
+                } else {
+                    apIcon.style.borderColor = "#444";
+                    apIcon.querySelector('span').style.color = "#444";
+                }
+            }
+        };
+
+        fileIn.onchange = (e) => { if(e.target.files[0]) processVideo(e.target.files[0]); };
+    </script>
+</body>
+</html>
