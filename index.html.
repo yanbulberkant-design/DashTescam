@@ -36,13 +36,18 @@
 
         <div id="preview-container" class="mt-10 hidden">
             <div class="relative rounded-lg overflow-hidden shadow-2xl border border-gray-800">
-                <video id="videoPreview" controls class="w-full"></video>
-            </div>
-            <p class="mt-4 text-gray-400 text-sm italic">Video succesvol geladen!</p>
-            <button onclick="window.location.reload();" class="mt-6 text-gray-500 underline text-xs">Andere video kiezen</button>
-        </div>
-    </main>
-
-    <script src="script.js"></script>
-</body>
-</html>
+                <<div id="preview-container" class="mt-10 hidden relative mx-auto max-w-2xl">
+    <div class="relative rounded-lg overflow-hidden shadow-2xl border border-gray-800">
+        <video id="videoPreview" controls class="w-full block"></video>
+        
+        <canvas id="telemetryCanvas" width="400" height="400" 
+                class="absolute bottom-4 left-4 w-32 h-32 pointer-events-none">
+        </canvas>
+    </div>
+    
+    <div class="mt-6 p-4 bg-gray-900 rounded-xl border border-gray-800">
+        <p class="text-sm text-gray-400 mb-2">Simuleer snelheid:</p>
+        <input type="range" id="speedTest" min="0" max="150" value="0" class="w-full accent-red-600">
+        <p class="text-xs text-gray-500 mt-2">Sleep de schuifregelaar om de meter te testen</p>
+    </div>
+</div>
