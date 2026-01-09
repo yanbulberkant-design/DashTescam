@@ -1,98 +1,74 @@
 <!DOCTYPE html>
 <html lang="nl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DashTescam Pro</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/protobufjs@7.2.4/dist/protobuf.min.js"></script>
-    <script src="dashcam-mp4.js"></script>
-    <style>
-        body { background: #000; color: #fff; font-family: sans-serif; }
-        .tesla-red { color: #E82127; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DashTescam</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; background: #f0f0f0; padding: 20px; }
+    h1 { font-size: 48px; margin-bottom: 10px; }
+    p { font-size: 20px; }
+    .button { padding: 12px 24px; font-size: 18px; background: #007bff; color: white; border: none; border-radius: 8px; cursor: pointer; }
+    video { max-width: 100%; margin: 20px auto; display: block; border: 2px solid #ccc; border-radius: 10px; }
+    #speed { font-size: 60px; font-weight: bold; margin: 20px; }
+    table { margin: 20px auto; border-collapse: collapse; }
+    th, td { padding: 8px; border: 1px solid #ddd; }
+  </style>
 </head>
-<body class="p-6">
-    <h1 class="text-2xl font-bold mb-4">DASH<span class="tesla-red">TESCAM</span> Pro</h1>
-    
-    <div id="upload-zone" onclick="document.getElementById('fileInput').click()" 
-         class="border-2 border-dashed border-gray-700 p-10 rounded-2xl text-center cursor-pointer hover:border-red-600">
-        <p>Klik om je Tesla App video te uploaden</p>
-        <input type="file" id="fileInput" class="hidden" accept="video/mp4">
-    </div>
+<body>
+  <h1>DASH TESCAM 🚗📹</h1>
+  <p>Upload je Dashcam beelden en bekijk live data (snelheid, GPS, acceleratie en meer).</p>
+  
+  <input type="file" id="file-input" accept="video/mp4" style="display:none;">
+  <button class="button" onclick="document.getElementById('file-input').click()">Kies Tesla Video</button>
+  <p id="status">Geen bestand geselecteerd</p>
+  
+  <video id="video" controls></video>
+  
+  <div id="speed">0 KM/H</div>
+  
+  <table id="telemetry-table">
+    <thead><tr><th>Tijd (s)</th><th>Snelheid (km/h)</th><th>GPS Lat</th><th>GPS Lon</th><th>Acceleratie</th></tr></thead>
+    <tbody></tbody>
+  </table>
 
-    <div id="preview-container" class="hidden mt-6">
-        <div class="relative">
-            <video id="videoPreview" muted playsinline controls class="w-full rounded-lg"></video>
-            <canvas id="gauge" width="200" height="200" class="absolute bottom-4 left-4 w-32 h-32"></canvas>
-        </div>
-        <div id="status" class="mt-4 p-3 bg-gray-900 rounded border border-gray-800 text-sm text-gray-400">
-            Wachten op data...
-        </div>
-    </div>
+  <script src="mp4box.js"></script>
+  <script src="dashcam-mp4.js"></script>
+  <script>
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
+    const speedDisplay = document.getElementById('speed');
+    const tableBody = document.querySelector('#telemetry-table tbody');
 
-    <script>
-        const video = document.getElementById('videoPreview');
-        const canvas = document.getElementById('gauge');
-        const ctx = canvas.getContext('2d');
-        const status = document.getElementById('status');
-
-        // Initialiseer de Tesla Parser
-        async function setupTeslaParser(buffer) {
-            try {
-                const { SeiMetadata } = await DashcamHelpers.initProtobuf('dashcam.proto');
-                const parser = new DashcamMP4(buffer);
-                const messages = parser.extractSeiMessages(SeiMetadata);
-                
-                if (messages.length > 0) {
-                    status.innerText = `Succes! ${messages.length} data-punten gevonden.`;
-                    return messages;
-                } else {
-                    status.innerText = "Geen telemetry data gevonden in deze clip.";
-                }
-            } catch (e) {
-                status.innerText = "Fout bij laden dashcam.proto. Zorg dat dit bestand in je GitHub staat.";
-                console.error(e);
-            }
-            return [];
+    document.getElementById('file-input').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      status.textContent = 'Video geladen: ' + file.name;
+      video.src = URL.createObjectURL(file);
+      
+      // Hier telemetry parsen (met dashcam-mp4.js)
+      const dashcam = new DashcamMp4();
+      const telemetry = await dashcam.parse(file);
+      
+      // Voorbeeld: vul tabel en update snelheid tijdens afspelen
+      tableBody.innerHTML = '';
+      telemetry.forEach(entry => {
+        const row = tableBody.insertRow();
+        row.insertCell(0).textContent = entry.time.toFixed(2);
+        row.insertCell(1).textContent = entry.speed ? entry.speed.toFixed(0) : '-';
+        // vul andere cellen...
+      });
+      
+      video.addEventListener('timeupdate', () => {
+        // Vind huidige snelheid en update gauge
+        const currentTime = video.currentTime;
+        const currentEntry = telemetry.find(t => Math.abs(t.time - currentTime) < 0.5);
+        if (currentEntry && currentEntry.speed) {
+          speedDisplay.textContent = currentEntry.speed.toFixed(0) + ' KM/H';
         }
-
-        document.getElementById('fileInput').onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const buffer = await file.arrayBuffer();
-            const telemetry = await setupTeslaParser(buffer);
-
-            video.src = URL.createObjectURL(file);
-            document.getElementById('upload-zone').classList.add('hidden');
-            document.getElementById('preview-container').classList.remove('hidden');
-            video.play();
-
-            // Koppel data aan video tijd
-            video.ontimeupdate = () => {
-                const frameIndex = Math.floor(video.currentTime * 30); // Tesla is meestal 30fps
-                if (telemetry[frameIndex]) {
-                    const speed = telemetry[frameIndex].speedMps * 3.6; // Meter/sec naar KM/U
-                    drawGauge(speed);
-                }
-            };
-        };
-
-        function drawGauge(speed) {
-            ctx.clearRect(0, 0, 200, 200);
-            ctx.beginPath();
-            ctx.arc(100, 100, 80, 0, 2 * Math.PI);
-            ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 10; ctx.stroke();
-            
-            ctx.beginPath();
-            ctx.arc(100, 100, 80, -0.5*Math.PI, (-0.5*Math.PI) + (speed/150)*2*Math.PI);
-            ctx.strokeStyle = '#E82127'; ctx.lineWidth = 12; ctx.stroke();
-
-            ctx.fillStyle = 'white'; ctx.font = 'bold 40px Arial'; ctx.textAlign = 'center';
-            ctx.fillText(Math.round(speed), 100, 110);
-            ctx.font = '15px Arial'; ctx.fillText('KM/H', 100, 140);
-        }
-    </script>
+      });
+    });
+  </script>
 </body>
 </html>
