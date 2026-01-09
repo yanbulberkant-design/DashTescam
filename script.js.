@@ -1,15 +1,27 @@
-const videoInput = document.getElementById('videoInput');
-const previewVideo = document.getElementById('previewVideo');
-const speedDisplay = document.getElementById('speedDisplay');
+// Voeg dit toe in je <script> gedeelte onder de bestaande code:
 
-videoInput.addEventListener('change', (event) => {
-    const file = event.target.files[0];
-    if (file) {
-        const url = URL.createObjectURL(file);
-        previewVideo.src = url;
-        previewVideo.style.display = 'block';
-        console.log('Video gekozen:', file.name);
-        speedDisplay.textContent = 'Video geladen – telemetry komt later!';
-        // Hier later ffmpeg.wasm of SEI parsing toevoegen
+videoPreview.ontimeupdate = () => {
+    // Tesla slaat data vaak op in de 'TextTracks'
+    const tracks = videoPreview.textTracks;
+    
+    if (tracks && tracks.length > 0) {
+        // We zetten de eerste track aan (waar de data meestal zit)
+        tracks[0].mode = 'hidden'; 
+        
+        const activeCues = tracks[0].activeCues;
+        if (activeCues && activeCues.length > 0) {
+            const dataString = activeCues[0].text;
+            console.log("Tesla Data gevonden:", dataString);
+            
+            // Tesla data ziet er vaak uit als een JSON-lijst of cijferreeks
+            // We proberen de snelheid eruit te vissen (bijv: "speed": 54)
+            const speedMatch = dataString.match(/(\d+)\s*km\/h/i) || dataString.match(/speed":\s*(\d+)/);
+            
+            if (speedMatch) {
+                const currentSpeed = speedMatch[1];
+                speedDisplay.innerText = currentSpeed + " KM/H";
+                drawGauge(currentSpeed);
+            }
+        }
     }
-});
+};
