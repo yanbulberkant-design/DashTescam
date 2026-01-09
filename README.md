@@ -7,6 +7,4 @@ An open-source Tesla Dashcam visualizer that overlays telemetry data (speed, GPS
 - **Easy Export:** One-click render to high-quality MP4.
 
 ## Tech Stack
-- Framework: Next.js
-- Video Processing: FFmpeg.wasm
-- Styling: Tailwind CSS
+
