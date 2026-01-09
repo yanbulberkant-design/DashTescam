@@ -1,85 +1,127 @@
 <!DOCTYPE html>
-<html>
+<html lang="nl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DashTescam LIVE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DashTescam - Tesla Dashcam Visualizer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: #000; color: #fff; font-family: sans-serif; }
-        #gauge-canvas { border-radius: 50%; }
+        body { background-color: #000; color: #fff; touch-action: manipulation; }
+        .tesla-red { color: #E82127; }
+        .border-dash { border: 2px dashed #444; }
+        canvas { filter: drop-shadow(0 0 8px rgba(232, 33, 39, 0.6)); }
     </style>
 </head>
-<body class="p-5 flex flex-col items-center justify-center min-h-screen">
+<body class="font-sans min-h-screen flex flex-col">
+    <nav class="p-6 flex justify-between items-center border-b border-gray-900">
+        <h1 class="text-2xl font-bold tracking-tighter italic">DASH<span class="tesla-red">TESCAM</span></h1>
+        <span class="text-[10px] text-gray-600 uppercase tracking-widest border border-gray-800 px-2 py-1 rounded">Mobile Edition</span>
+    </nav>
 
-    <h1 class="text-3xl font-black mb-2 text-red-600">DASH TESCAM</h1>
-    <p class="text-gray-400 mb-10 text-center">Tik op het grote vak om een Tesla clip te laden.</p>
-
-    <div id="dropzone" onclick="document.getElementById('fileIn').click()" 
-         class="w-full max-w-md aspect-video border-4 border-dashed border-gray-800 rounded-3xl flex items-center justify-center cursor-pointer hover:border-red-600 transition-all">
-        <span class="text-6xl text-gray-800">+</span>
-    </div>
-
-    <input type="file" id="fileIn" class="hidden" accept="video/*">
-
-    <div id="preview" class="hidden mt-10 w-full max-w-md relative">
-        <video id="vid" controls class="w-full rounded-xl shadow-2xl border border-gray-700"></video>
-        <canvas id="gauge-canvas" width="200" height="200" 
-                class="absolute bottom-2 left-2 w-24 h-24 pointer-events-none"></canvas>
-        
-        <div class="mt-5 p-4 bg-gray-900 rounded-xl">
-            <input type="range" id="speed" min="0" max="150" value="0" class="w-full accent-red-600">
-            <p id="kmh" class="text-center font-bold text-xl mt-2">0 KM/H</p>
+    <main class="flex-grow max-w-4xl mx-auto pt-8 px-6 pb-20 w-full">
+        <div id="header-text" class="text-center mb-8">
+            <h2 class="text-3xl font-extrabold mb-2">Tesla Telemetry</h2>
+            <p class="text-gray-500 text-sm">Voeg live snelheid toe aan je Dashcam clips.</p>
         </div>
-        <button onclick="location.reload()" class="w-full mt-5 text-gray-500 underline text-sm">Andere video kiezen</button>
-    </div>
+        
+        <div id="upload-zone" onclick="document.getElementById('fileInput').click();" 
+             class="border-dash rounded-3xl p-12 bg-gray-900/30 active:bg-gray-900/60 border-gray-700 transition-all text-center">
+            <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span class="text-3xl text-red-600">+</span>
+            </div>
+            <p class="text-lg font-bold">Kies Tesla Video</p>
+            <p class="text-gray-500 mt-1 text-xs px-4">Selecteer een clip uit je bibliotheek of bestanden</p>
+            <input type="file" id="fileInput" class="hidden" accept="video/*">
+        </div>
+
+        <div id="preview-container" class="hidden animate-in fade-in duration-500">
+            <div class="relative rounded-2xl overflow-hidden shadow-2xl bg-black border border-gray-800" style="aspect-ratio: 16/9;">
+                <video id="videoPreview" muted playsinline controls class="w-full h-full object-contain"></video>
+                
+                <canvas id="telemetryCanvas" width="400" height="400" 
+                        class="absolute bottom-2 left-2 w-28 h-28 md:w-40 md:h-40 pointer-events-none"></canvas>
+            </div>
+
+            <div class="mt-6 p-5 bg-gray-900/80 rounded-2xl border border-gray-800">
+                <div class="flex justify-between items-center mb-4">
+                    <label class="font-bold text-xs uppercase tracking-wider text-gray-500">Handmatige Snelheid</label>
+                    <span id="speedDisplay" class="text-red-600 font-mono font-bold text-lg">0 KM/H</span>
+                </div>
+                <input type="range" id="speedTest" min="0" max="200" value="0" 
+                       class="w-full h-3 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-red-600">
+                
+                <button onclick="window.location.reload()" class="mt-8 w-full py-3 bg-gray-800 text-white text-sm font-bold rounded-xl active:bg-gray-700">
+                    Andere Video
+                </button>
+            </div>
+        </div>
+    </main>
 
     <script>
-        const fileIn = document.getElementById('fileIn');
-        const vid = document.getElementById('vid');
-        const dropzone = document.getElementById('dropzone');
-        const preview = document.getElementById('preview');
-        const canvas = document.getElementById('gauge-canvas');
+        const fileInput = document.getElementById('fileInput');
+        const videoPreview = document.getElementById('videoPreview');
+        const uploadZone = document.getElementById('upload-zone');
+        const previewContainer = document.getElementById('preview-container');
+        const headerText = document.getElementById('header-text');
+        const canvas = document.getElementById('telemetryCanvas');
         const ctx = canvas.getContext('2d');
+        const speedTest = document.getElementById('speedTest');
+        const speedDisplay = document.getElementById('speedDisplay');
 
-        // Teken functie voor de meter
-        function draw(s) {
-            ctx.clearRect(0, 0, 200, 200);
+        function drawGauge(speed) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = 170;
+
+            // Grijze ring
             ctx.beginPath();
-            ctx.arc(100, 100, 80, 0, 2 * Math.PI);
-            ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-            ctx.lineWidth = 10;
+            ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 15;
             ctx.stroke();
 
+            // Rode ring (Snelheid)
+            const startAngle = -0.5 * Math.PI;
+            const endAngle = startAngle + (speed / 200) * 2 * Math.PI;
             ctx.beginPath();
-            ctx.arc(100, 100, 80, -0.5*Math.PI, (-0.5*Math.PI) + (s/150)*2*Math.PI);
+            ctx.arc(centerX, centerY, radius, startAngle, endAngle);
             ctx.strokeStyle = '#E82127';
-            ctx.lineWidth = 12;
+            ctx.lineWidth = 20;
+            ctx.lineCap = 'round';
             ctx.stroke();
 
+            // Getal
             ctx.fillStyle = 'white';
-            ctx.font = 'bold 50px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText(Math.round(s), 100, 115);
+            ctx.font = 'bold 120px sans-serif';
+            ctx.fillText(Math.round(speed), centerX, centerY + 20);
+            
+            ctx.font = 'bold 30px sans-serif';
+            ctx.fillStyle = '#888';
+            ctx.fillText('KM/H', centerX, centerY + 70);
         }
 
-        fileIn.onchange = (e) => {
+        fileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
-                vid.src = URL.createObjectURL(file);
-                dropzone.classList.add('hidden');
-                preview.classList.remove('hidden');
-                draw(0);
-                vid.play();
+                const url = URL.createObjectURL(file);
+                videoPreview.src = url;
+                
+                uploadZone.classList.add('hidden');
+                headerText.classList.add('hidden');
+                previewContainer.classList.remove('hidden');
+                
+                videoPreview.play();
+                drawGauge(0);
             }
-        };
+        });
 
-        document.getElementById('speed').oninput = (e) => {
+        speedTest.addEventListener('input', (e) => {
             const val = e.target.value;
-            document.getElementById('kmh').innerText = val + " KM/H";
-            draw(val);
-        };
+            speedDisplay.innerText = val + " KM/H";
+            drawGauge(val);
+        });
     </script>
 </body>
 </html>
-
