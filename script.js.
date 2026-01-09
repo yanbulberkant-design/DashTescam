@@ -1,17 +1,26 @@
-const uploadZone = document.getElementById('upload-zone');
 const fileInput = document.getElementById('fileInput');
 const videoPreview = document.getElementById('videoPreview');
+const uploadZone = document.getElementById('upload-zone');
 const previewContainer = document.getElementById('preview-container');
 
-uploadZone.addEventListener('click', () => fileInput.click());
-
+// Luisteren naar de upload
 fileInput.addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (file) {
-        const url = URL.createObjectURL(file);
-        videoPreview.src = url;
+        // Maak een tijdelijke link naar de video op jouw telefoon/pc
+        const videoUrl = URL.createObjectURL(file);
+        videoPreview.src = videoUrl;
+
+        // Wissel van upload-scherm naar video-scherm
         uploadZone.classList.add('hidden');
         previewContainer.classList.remove('hidden');
-        console.log("Video geladen: " + file.name);
+
+        console.log("DashTescam heeft bestand geladen: " + file.name);
     }
 });
+
+// Functie om de "Tesla Overlay" te tekenen (Basis)
+function drawOverlay() {
+    // Hier komt straks de code die de snelheid over de video tekent
+    alert("Klaar om telemetrie te berekenen voor deze Tesla clip!");
+}
