@@ -1,0 +1,17 @@
+const uploadZone = document.getElementById('upload-zone');
+const fileInput = document.getElementById('fileInput');
+const videoPreview = document.getElementById('videoPreview');
+const previewContainer = document.getElementById('preview-container');
+
+uploadZone.addEventListener('click', () => fileInput.click());
+
+fileInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const url = URL.createObjectURL(file);
+        videoPreview.src = url;
+        uploadZone.classList.add('hidden');
+        previewContainer.classList.remove('hidden');
+        console.log("Video geladen: " + file.name);
+    }
+});
