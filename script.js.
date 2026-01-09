@@ -1,13 +1,15 @@
 const videoInput = document.getElementById('videoInput');
-const teslaVideo = document.getElementById('teslaVideo');
+const previewVideo = document.getElementById('previewVideo');
+const speedDisplay = document.getElementById('speedDisplay');
 
 videoInput.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (file) {
         const url = URL.createObjectURL(file);
-        teslaVideo.src = url;
-        teslaVideo.play();
-        console.log('Video geladen:', file.name);
-        // Hier later telemetry processing toevoegen
+        previewVideo.src = url;
+        previewVideo.style.display = 'block';
+        console.log('Video gekozen:', file.name);
+        speedDisplay.textContent = 'Video geladen – telemetry komt later!';
+        // Hier later ffmpeg.wasm of SEI parsing toevoegen
     }
 });
