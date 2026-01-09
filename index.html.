@@ -1,9 +1,48 @@
-<div id="upload-zone" onclick="document.getElementById('fileInput').click()" class="border-dash rounded-3xl p-12 bg-gray-900/50 hover:border-red-600 transition-colors cursor-pointer mt-10">
-    <div class="flex flex-col items-center">
-        <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-4">
-            <span class="text-2xl text-red-600">+</span>
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DashTescam - Tesla Dashcam Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #000; color: #fff; }
+        .tesla-red { color: #E82127; }
+        .border-dash { border: 2px dashed #444; }
+    </style>
+</head>
+<body class="font-sans">
+    <nav class="p-6 flex justify-between items-center border-b border-gray-800">
+        <h1 class="text-2xl font-bold tracking-tighter text-white">DASH<span class="tesla-red">TESCAM</span></h1>
+    </nav>
+
+    <main class="max-w-4xl mx-auto pt-10 px-6 text-center">
+        <h2 class="text-4xl font-extrabold mb-4">Maak je Tesla beelden <span class="text-gray-500">cinematic.</span></h2>
+        
+        <div id="upload-zone" 
+             onclick="document.getElementById('fileInput').click();" 
+             class="border-dash rounded-3xl p-12 bg-gray-900/50 hover:border-red-600 transition-all cursor-pointer mt-10">
+            
+            <div class="flex flex-col items-center">
+                <div class="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mb-4">
+                    <span class="text-3xl text-red-600">+</span>
+                </div>
+                <p class="text-lg font-semibold">Tik hier om een video te kiezen</p>
+                <p class="text-sm text-gray-500 mt-2">Selecteer een Tesla .mp4 bestand</p>
+                
+                <input type="file" id="fileInput" class="hidden" accept="video/*">
+            </div>
         </div>
-        <p class="text-lg font-semibold">Klik hier om een Tesla video te uploaden</p>
-        <input type="file" id="fileInput" class="hidden" accept="video/mp4,video/x-m4v,video/*">
-    </div>
-</div>
+
+        <div id="preview-container" class="mt-10 hidden">
+            <div class="relative rounded-lg overflow-hidden shadow-2xl border border-gray-800">
+                <video id="videoPreview" controls class="w-full"></video>
+            </div>
+            <p class="mt-4 text-gray-400 text-sm italic">Video succesvol geladen!</p>
+            <button onclick="window.location.reload();" class="mt-6 text-gray-500 underline text-xs">Andere video kiezen</button>
+        </div>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>
