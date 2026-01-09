@@ -1,27 +1,59 @@
-// Voeg dit toe in je <script> gedeelte onder de bestaande code:
+<script>
+    const fileInput = document.getElementById('fileInput');
+    const video = document.getElementById('videoPreview');
+    const status = document.getElementById('status');
 
-videoPreview.ontimeupdate = () => {
-    // Tesla slaat data vaak op in de 'TextTracks'
-    const tracks = videoPreview.textTracks;
-    
-    if (tracks && tracks.length > 0) {
-        // We zetten de eerste track aan (waar de data meestal zit)
-        tracks[0].mode = 'hidden'; 
+    // Functie om de Tesla data uit te lezen
+    async function processTeslaVideo(file) {
+        status.innerText = "Data analyseren...";
+        const buffer = await file.arrayBuffer();
         
-        const activeCues = tracks[0].activeCues;
-        if (activeCues && activeCues.length > 0) {
-            const dataString = activeCues[0].text;
-            console.log("Tesla Data gevonden:", dataString);
+        try {
+            // 1. Laad het woordenboek (dashcam.proto)
+            const { SeiMetadata } = await DashcamHelpers.initProtobuf('dashcam.proto');
             
-            // Tesla data ziet er vaak uit als een JSON-lijst of cijferreeks
-            // We proberen de snelheid eruit te vissen (bijv: "speed": 54)
-            const speedMatch = dataString.match(/(\d+)\s*km\/h/i) || dataString.match(/speed":\s*(\d+)/);
+            // 2. Start de parser
+            const parser = new DashcamMP4(buffer);
             
-            if (speedMatch) {
-                const currentSpeed = speedMatch[1];
-                speedDisplay.innerText = currentSpeed + " KM/H";
-                drawGauge(currentSpeed);
+            // 3. Haal de berichten eruit
+            const messages = parser.extractSeiMessages(SeiMetadata);
+            
+            if (messages.length > 0) {
+                status.innerText = `Succes! ${messages.length} data-punten geladen.`;
+                return messages;
+            } else {
+                status.innerText = "Geen telemetry gevonden. Is dit een originele Tesla clip?";
+                return [];
             }
+        } catch (err) {
+            status.innerText = "Fout: dashcam.proto niet gevonden of leesbaar.";
+            console.error(err);
+            return [];
         }
     }
-};
+
+    fileInput.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Start analyse en video tegelijk
+        const telemetryData = await processTeslaVideo(file);
+        video.src = URL.createObjectURL(file);
+        
+        document.getElementById('upload-zone').classList.add('hidden');
+        document.getElementById('preview-container').classList.remove('hidden');
+        video.play();
+
+        // Koppel snelheid aan video tijd
+        video.ontimeupdate = () => {
+            // Zoek het juiste datapunt op basis van de tijd in de video
+            const currentTime = video.currentTime;
+            const dataPoint = telemetryData.find(m => m.timestamp >= currentTime) || telemetryData[0];
+            
+            if (dataPoint && dataPoint.speedMps) {
+                const kmh = Math.round(dataPoint.speedMps * 3.6);
+                drawGauge(kmh); // Teken de rode meter
+            }
+        };
+    };
+</script>
